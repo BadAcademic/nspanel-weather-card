@@ -1,11 +1,14 @@
 import { LitElement, html, nothing } from 'lit';
-import type { Align, HomeAssistant, NSPanelCardConfig } from './types';
+import type { Align, ForecastDay, HomeAssistant, NSPanelCardConfig } from './types';
 import { mergeConfig } from './defaults';
 import { resolveLang } from './localize';
-import { ensureCustomFont } from './utils';
+import { buildForecast, ensureCustomFont } from './utils';
 import './blocks/clock';
 import './blocks/outdoor';
 import './blocks/indoor';
+import './blocks/forecast';
+
+const FORECAST_REFRESH_MS = 30 * 60 * 1000;
 
 export class NSPanelWeatherCard extends LitElement {
   static async getConfigElement(): Promise<HTMLElement> {
@@ -22,9 +25,14 @@ export class NSPanelWeatherCard extends LitElement {
 
   private _config: NSPanelCardConfig = mergeConfig({});
   private _hass?: HomeAssistant;
+  private _forecast: ForecastDay[] = [];
+  private _unsubForecast?: () => void;
+  private _forecastKey = '';
+  private _forecastTimer?: number;
 
   setConfig(config: Partial<NSPanelCardConfig>): void {
     this._config = mergeConfig(config);
+    this._ensureForecast();
     this.requestUpdate();
   }
 
@@ -34,7 +42,80 @@ export class NSPanelWeatherCard extends LitElement {
 
   set hass(hass: HomeAssistant) {
     this._hass = hass;
+    if (!this._unsubForecast) this._forecastFromAttributes();
+    this._ensureForecast();
     this.requestUpdate();
+  }
+
+  connectedCallback(): void {
+    super.connectedCallback();
+    if (!this._forecastTimer) {
+      this._forecastTimer = window.setInterval(() => {
+        if (!this._unsubForecast) this._forecastFromAttributes();
+        this.requestUpdate();
+      }, FORECAST_REFRESH_MS);
+    }
+    this._ensureForecast();
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    window.clearInterval(this._forecastTimer);
+    this._forecastTimer = undefined;
+    this._stopForecast();
+  }
+
+  private _forecastEntity(): string {
+    return this._config.blocks.forecast.weather_entity || this._config.blocks.outdoor.weather_entity;
+  }
+
+  private _stopForecast(): void {
+    this._unsubForecast?.();
+    this._unsubForecast = undefined;
+    this._forecastKey = '';
+  }
+
+  private _ensureForecast(): void {
+    const c = this._config.blocks.forecast;
+    if (!c.enabled) {
+      this._stopForecast();
+      this._forecast = [];
+      return;
+    }
+    const entity = this._forecastEntity();
+    if (!entity || !this._hass) return;
+    const key = `${entity}|${c.days}`;
+    if (key === this._forecastKey) return;
+    this._stopForecast();
+    this._forecastKey = key;
+    const connection = this._hass.connection;
+    if (!connection?.subscribeMessage) {
+      this._forecastFromAttributes();
+      return;
+    }
+    connection
+      .subscribeMessage<{ forecast?: unknown }>(
+        (message) => {
+          this._forecast = buildForecast(message.forecast, c.days);
+          this.requestUpdate();
+        },
+        { type: 'weather/subscribe_forecast', entity_id: entity, forecast_type: 'daily' },
+      )
+      .then((unsub) => {
+        this._unsubForecast = () => {
+          void unsub();
+        };
+      })
+      .catch(() => {
+        this._forecastKey = '';
+        this._forecastFromAttributes();
+      });
+  }
+
+  private _forecastFromAttributes(): void {
+    const entity = this._forecastEntity();
+    const attributes = entity ? this._hass?.states[entity]?.attributes : undefined;
+    this._forecast = buildForecast(attributes?.forecast, this._config.blocks.forecast.days);
   }
 
   getCardSize(): number {
@@ -94,6 +175,17 @@ export class NSPanelWeatherCard extends LitElement {
                 .hass=${this._hass}
                 .lang=${lang}
               ></nspanel-indoor>`,
+            )
+          : nothing}
+        ${c.blocks.forecast.enabled
+          ? this._block(
+              c.blocks.forecast,
+              html`<nspanel-forecast
+                .config=${c.blocks.forecast}
+                .forecast=${this._forecast}
+                .lang=${lang}
+                .iconOverride=${c.blocks.outdoor.icon_override}
+              ></nspanel-forecast>`,
             )
           : nothing}
       </div>

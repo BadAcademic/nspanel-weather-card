@@ -20,10 +20,10 @@ configurable from the Home Assistant visual editor.
 ### HACS
 
 1. Open HACS → Frontend → menu → **Custom repositories**.
-2. Add the URL of this repository with category **Lovelace**.
+2. Add the URL of this repository with category **Dashboard** (called **Lovelace** in HACS 1.x).
 3. Install **NSPanel Weather Card** and reload Home Assistant.
 4. HACS adds the resource automatically. If not, add it manually:
-   Settings → Dashboards → Resources → `/hacsfiles/nspanel-weather-card/nspanel-weather-card.js` (JavaScript module).
+   Settings → Dashboards → Resources → `/hacsfiles/<repository-name>/nspanel-weather-card.js` (JavaScript module).
 
 Requires Home Assistant 2023.9 or newer.
 

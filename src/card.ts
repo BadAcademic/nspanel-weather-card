@@ -5,6 +5,7 @@ import { resolveLang } from './localize';
 import { ensureCustomFont } from './utils';
 import './blocks/clock';
 import './blocks/outdoor';
+import './blocks/indoor';
 
 export class NSPanelWeatherCard extends LitElement {
   static async getConfigElement(): Promise<HTMLElement> {
@@ -83,6 +84,16 @@ export class NSPanelWeatherCard extends LitElement {
                 .hass=${this._hass}
                 .lang=${lang}
               ></nspanel-outdoor>`,
+            )
+          : nothing}
+        ${c.blocks.indoor.enabled
+          ? this._block(
+              c.blocks.indoor,
+              html`<nspanel-indoor
+                .config=${c.blocks.indoor}
+                .hass=${this._hass}
+                .lang=${lang}
+              ></nspanel-indoor>`,
             )
           : nothing}
       </div>

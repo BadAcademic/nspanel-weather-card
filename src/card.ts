@@ -7,6 +7,7 @@ import './blocks/clock';
 import './blocks/outdoor';
 import './blocks/indoor';
 import './blocks/forecast';
+import './blocks/buttons';
 
 const FORECAST_REFRESH_MS = 30 * 60 * 1000;
 
@@ -234,6 +235,12 @@ export class NSPanelWeatherCard extends LitElement {
                 .lang=${lang}
                 .iconOverride=${c.blocks.outdoor.icon_override}
               ></nspanel-forecast>`,
+            )
+          : nothing}
+        ${c.blocks.buttons.enabled
+          ? this._block(
+              c.blocks.buttons,
+              html`<nspanel-buttons .config=${c.blocks.buttons}></nspanel-buttons>`,
             )
           : nothing}
       </div>

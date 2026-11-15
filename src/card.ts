@@ -28,6 +28,7 @@ export class NSPanelWeatherCard extends LitElement {
   private _forecast: ForecastDay[] = [];
   private _unsubForecast?: () => void;
   private _forecastKey = '';
+  private _forecastRetryAt = 0;
   private _forecastTimer?: number;
 
   setConfig(config: Partial<NSPanelCardConfig>): void {
@@ -52,6 +53,8 @@ export class NSPanelWeatherCard extends LitElement {
     if (!this._forecastTimer) {
       this._forecastTimer = window.setInterval(() => {
         if (!this._unsubForecast) this._forecastFromAttributes();
+        this._forecastRetryAt = 0;
+        this._ensureForecast();
         this.requestUpdate();
       }, FORECAST_REFRESH_MS);
     }
@@ -73,6 +76,7 @@ export class NSPanelWeatherCard extends LitElement {
     this._unsubForecast?.();
     this._unsubForecast = undefined;
     this._forecastKey = '';
+    this._forecastRetryAt = 0;
   }
 
   private _ensureForecast(): void {
@@ -83,16 +87,27 @@ export class NSPanelWeatherCard extends LitElement {
       return;
     }
     const entity = this._forecastEntity();
-    if (!entity || !this._hass) return;
+    if (!entity) {
+      this._stopForecast();
+      return;
+    }
+    if (!this._hass) return;
     const key = `${entity}|${c.days}`;
-    if (key === this._forecastKey) return;
-    this._stopForecast();
-    this._forecastKey = key;
+    if (key === this._forecastKey) {
+      // Already subscribed, or a subscribe attempt is in flight/backing off.
+      if (this._unsubForecast || Date.now() < this._forecastRetryAt) return;
+    } else {
+      this._stopForecast();
+      this._forecastKey = key;
+      this._forecastRetryAt = 0;
+    }
     const connection = this._hass.connection;
     if (!connection?.subscribeMessage) {
       this._forecastFromAttributes();
       return;
     }
+    // Marks the attempt as in flight; the catch handler keeps this backoff.
+    this._forecastRetryAt = Date.now() + FORECAST_REFRESH_MS;
     connection
       .subscribeMessage<{ forecast?: unknown }>(
         (message) => {
@@ -102,14 +117,41 @@ export class NSPanelWeatherCard extends LitElement {
         { type: 'weather/subscribe_forecast', entity_id: entity, forecast_type: 'daily' },
       )
       .then((unsub) => {
-        this._unsubForecast = () => {
+        const stop = () => {
           void unsub();
         };
+        if (!this.isConnected || this._forecastKey !== key) {
+          stop();
+          return;
+        }
+        this._unsubForecast = stop;
+        this._forecastRetryAt = 0;
       })
       .catch(() => {
-        this._forecastKey = '';
-        this._forecastFromAttributes();
+        this._forecastRetryAt = Date.now() + FORECAST_REFRESH_MS;
+        void this._fetchForecastOnce(entity, key);
       });
+  }
+
+  private async _fetchForecastOnce(entity: string, key: string): Promise<void> {
+    const days = this._config.blocks.forecast.days;
+    try {
+      const result = await this._hass?.callWS<{ response?: Record<string, { forecast?: unknown }> }>({
+        type: 'call_service',
+        domain: 'weather',
+        service: 'get_forecasts',
+        service_data: { type: 'daily' },
+        target: { entity_id: entity },
+        return_response: true,
+      });
+      if (this._forecastKey !== key) return;
+      const entries = result?.response?.[entity]?.forecast;
+      this._forecast = buildForecast(entries, days);
+    } catch {
+      if (this._forecastKey !== key) return;
+      this._forecastFromAttributes();
+    }
+    this.requestUpdate();
   }
 
   private _forecastFromAttributes(): void {

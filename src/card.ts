@@ -4,6 +4,7 @@ import { mergeConfig } from './defaults';
 import { resolveLang } from './localize';
 import { ensureCustomFont } from './utils';
 import './blocks/clock';
+import './blocks/outdoor';
 
 export class NSPanelWeatherCard extends LitElement {
   static async getConfigElement(): Promise<HTMLElement> {
@@ -72,6 +73,16 @@ export class NSPanelWeatherCard extends LitElement {
           ? this._block(
               c.blocks.clock,
               html`<nspanel-clock .config=${c.blocks.clock} .lang=${lang} .hour12=${hour12}></nspanel-clock>`,
+            )
+          : nothing}
+        ${c.blocks.outdoor.enabled
+          ? this._block(
+              c.blocks.outdoor,
+              html`<nspanel-outdoor
+                .config=${c.blocks.outdoor}
+                .hass=${this._hass}
+                .lang=${lang}
+              ></nspanel-outdoor>`,
             )
           : nothing}
       </div>

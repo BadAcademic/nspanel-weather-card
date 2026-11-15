@@ -1474,6 +1474,10 @@ export class NSPanelClock extends LitElement {
     `;
   }
 }
+
+if (!customElements.get('nspanel-clock')) {
+  customElements.define('nspanel-clock', NSPanelClock);
+}
 ```
 
 - [ ] **Step 2: Создать `src/card.ts`**
@@ -3045,3 +3049,6 @@ git commit -m "chore: add HACS metadata, docs and release workflow"
 - Дев-страница (`npm run dev`) — единственный способ проверить DOM-рендер до установки в HA; после каждой задачи с блоком обязательно открыть её и глазами проверить ожидаемое поведение из шага.
 - Не коммить `dist/` и `node_modules/` (в `.gitignore`).
 - При правках `src/card.ts` между задачами 7–10 порядок блоков в `render()`: clock → outdoor → indoor → forecast → buttons.
+- **Каждый модуль блока регистрирует свой custom element внизу файла**, сразу после объявления класса:
+  `if (!customElements.get('nspanel-clock')) customElements.define('nspanel-clock', NSPanelClock);`
+  То же для `nspanel-outdoor`, `nspanel-indoor`, `nspanel-forecast`, `nspanel-buttons`. Без этого блок рендерится как пустой unknown element (ошибку не ловят ни typecheck, ни тесты, ни сборка).

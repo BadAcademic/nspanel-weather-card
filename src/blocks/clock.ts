@@ -12,7 +12,7 @@ export class NSPanelClock extends LitElement {
 
   config!: ClockConfig;
   lang: Lang = 'en';
-  hour12 = false;
+  hour12: boolean | undefined = undefined;
 
   private _timer?: number;
 

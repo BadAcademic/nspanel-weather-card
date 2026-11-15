@@ -45,7 +45,9 @@ export class NSPanelWeatherCard extends LitElement {
 
   set hass(hass: HomeAssistant) {
     this._hass = hass;
-    if (!this._unsubForecast && this._forecastSource !== 'ws') this._forecastFromAttributes();
+    if (!this._unsubForecast && this._forecastSource !== 'ws' && this._config.blocks.forecast.enabled) {
+      this._forecastFromAttributes();
+    }
     this._ensureForecast();
     this.requestUpdate();
   }
@@ -54,7 +56,9 @@ export class NSPanelWeatherCard extends LitElement {
     super.connectedCallback();
     if (!this._forecastTimer) {
       this._forecastTimer = window.setInterval(() => {
-        if (!this._unsubForecast && this._forecastSource !== 'ws') this._forecastFromAttributes();
+        if (!this._unsubForecast && this._forecastSource !== 'ws' && this._config.blocks.forecast.enabled) {
+          this._forecastFromAttributes();
+        }
         this._forecastRetryAt = 0;
         this._ensureForecast();
         this.requestUpdate();
@@ -92,6 +96,7 @@ export class NSPanelWeatherCard extends LitElement {
     const entity = this._forecastEntity();
     if (!entity) {
       this._stopForecast();
+      this._forecast = [];
       return;
     }
     if (!this._hass) return;
@@ -114,6 +119,7 @@ export class NSPanelWeatherCard extends LitElement {
     connection
       .subscribeMessage<{ forecast?: unknown }>(
         (message) => {
+          if (this._forecastKey !== key) return;
           this._forecast = buildForecast(message.forecast, c.days);
           this._forecastSource = 'sub';
           this.requestUpdate();
@@ -181,7 +187,12 @@ export class NSPanelWeatherCard extends LitElement {
     const c = this._config;
     const lang = resolveLang(c.locale, this._hass?.locale?.language);
     const timeFormat = this._hass?.locale?.time_format;
-    const hour12 = !!timeFormat && timeFormat !== '24';
+    const hour12 =
+      timeFormat === '12' || timeFormat === 'am_pm' || timeFormat === 'AM_PM'
+        ? true
+        : timeFormat === '24'
+          ? false
+          : undefined;
     if (c.font.custom_font_url) ensureCustomFont(c.font.custom_font_url);
     const font = `${c.font.custom_font_url ? "'NSPanelCustomFont', " : ''}${c.font.family}`;
     return html`

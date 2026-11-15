@@ -26,7 +26,7 @@ export interface HassEntity {
 
 export interface HomeAssistant {
   states: Record<string, HassEntity>;
-  locale?: { language: string; time_format?: '24' | '12' | 'am_pm' | 'AM_PM' };
+  locale?: { language: string; time_format?: string };
   connection?: {
     subscribeMessage<T>(
       callback: (message: T) => void,

@@ -2,7 +2,7 @@ import { LitElement, html, nothing } from 'lit';
 import type { HassEntity, HomeAssistant, OutdoorConfig } from '../types';
 import type { Lang } from '../localize';
 import { localize } from '../localize';
-import { convertPressure, formatPressure, formatTemp } from '../utils';
+import { convertPressure, formatPressure, formatTemp, parseNumericState } from '../utils';
 import { handleIconError, weatherIcon } from '../assets';
 
 export class NSPanelOutdoor extends LitElement {
@@ -18,9 +18,7 @@ export class NSPanelOutdoor extends LitElement {
 
   private _value(overrideEntity: string, attr: string, weather?: HassEntity): number | undefined {
     if (overrideEntity) {
-      const state = this.hass?.states[overrideEntity];
-      const parsed = state ? parseFloat(state.state) : NaN;
-      return Number.isNaN(parsed) ? undefined : parsed;
+      return parseNumericState(this.hass, overrideEntity);
     }
     const value = weather?.attributes?.[attr];
     return typeof value === 'number' ? value : undefined;
@@ -29,10 +27,9 @@ export class NSPanelOutdoor extends LitElement {
   private _pressure(weather?: HassEntity): number | undefined {
     const id = this.config.pressure_entity;
     if (id) {
-      const state = this.hass?.states[id];
-      const parsed = state ? parseFloat(state.state) : NaN;
-      if (Number.isNaN(parsed)) return undefined;
-      const unit = state?.attributes?.unit_of_measurement;
+      const parsed = parseNumericState(this.hass, id);
+      if (parsed === undefined) return undefined;
+      const unit = this.hass?.states[id]?.attributes?.unit_of_measurement;
       return convertPressure(parsed, typeof unit === 'string' ? unit : undefined);
     }
     const value = weather?.attributes?.pressure;

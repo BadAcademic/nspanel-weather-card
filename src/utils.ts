@@ -1,4 +1,4 @@
-import type { ForecastDay, WeatherConditionKey } from './types';
+import type { ForecastDay, HomeAssistant, WeatherConditionKey } from './types';
 
 const MMHG_PER_HPA = 0.750061683;
 const MMHG_PER_PA = MMHG_PER_HPA / 100;
@@ -54,7 +54,7 @@ export function normalizeCondition(condition: unknown): WeatherConditionKey {
 }
 
 export function buildForecast(entries: unknown, days: number): ForecastDay[] {
-  if (!Array.isArray(entries)) return [];
+  if (!Array.isArray(entries) || days <= 0) return [];
   const out: ForecastDay[] = [];
   for (const entry of entries) {
     if (!entry || typeof entry !== 'object') continue;
@@ -89,8 +89,18 @@ export function formatDate(date: Date, lang: string): string {
   return new Intl.DateTimeFormat(lang, { day: 'numeric', month: 'long' }).format(date);
 }
 
-export function formatTime(date: Date, lang: string, hour12: boolean): string {
-  return new Intl.DateTimeFormat(lang, { hour: '2-digit', minute: '2-digit', hour12 }).format(date);
+export function formatTime(date: Date, lang: string, hour12?: boolean): string {
+  const options: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' };
+  if (hour12 !== undefined) options.hour12 = hour12;
+  return new Intl.DateTimeFormat(lang, options).format(date);
+}
+
+export function parseNumericState(hass: HomeAssistant | undefined, entityId: string): number | undefined {
+  if (!entityId) return undefined;
+  const state = hass?.states[entityId];
+  if (!state) return undefined;
+  const parsed = Number.parseFloat(state.state);
+  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 export function hexToRgb(hex: string): [number, number, number] | undefined {

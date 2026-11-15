@@ -81,6 +81,11 @@ describe('buildForecast', () => {
     expect(buildForecast(undefined, 3)).toEqual([]);
     expect(buildForecast('nope', 3)).toEqual([]);
   });
+
+  it('returns no entries when days is zero or negative', () => {
+    expect(buildForecast(entries, 0)).toEqual([]);
+    expect(buildForecast(entries, -1)).toEqual([]);
+  });
 });
 
 describe('date helpers', () => {
@@ -101,6 +106,16 @@ describe('date helpers', () => {
 
   it('formats time 24h', () => {
     expect(formatTime(sunday, 'ru', false)).toBe('09:05');
+  });
+
+  it('formats time without explicit hour cycle when hour12 is undefined', () => {
+    const value = formatTime(sunday, 'ru');
+    expect(value).toBe('09:05');
+  });
+
+  it('formats 12-hour time when hour12 is true', () => {
+    const value = formatTime(sunday, 'en', true);
+    expect(value).toMatch(/9:05\s*AM/i);
   });
 });
 

@@ -4,6 +4,7 @@
   "description": "Custom Lovelace weather card for Sonoff NSPanel 480x480",
   "type": "module",
   "license": "MIT",
+  "private": true,
   "scripts": {
     "dev": "vite --config vite.dev.config.ts --open",
     "build": "vite build",

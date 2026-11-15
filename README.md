@@ -25,7 +25,8 @@ configurable from the Home Assistant visual editor.
 4. HACS adds the resource automatically. If not, add it manually:
    Settings → Dashboards → Resources → `/hacsfiles/<repository-name>/nspanel-weather-card.js` (JavaScript module).
 
-Requires Home Assistant 2023.9 or newer.
+Requires Home Assistant 2023.9 or newer (manual installation floor; HACS itself
+may require a newer Home Assistant version).
 
 ### Manual
 
@@ -35,7 +36,10 @@ Copy `dist/nspanel-weather-card.js` from the latest release to
 
 ## Configuration
 
-Add a card via the UI and use the visual editor, or configure YAML directly:
+Add a card via the UI and use the visual editor, or configure YAML directly. If
+`weather.home` does not exist in your installation, all outdoor and forecast
+values show «—»; set `weather_entity` to your actual weather entity (e.g.
+`weather.forecast_home`).
 
 ```yaml
 type: custom:nspanel-weather-card

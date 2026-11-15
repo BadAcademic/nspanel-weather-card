@@ -2,7 +2,7 @@ import { LitElement, html, nothing } from 'lit';
 import type { HomeAssistant, IndoorConfig } from '../types';
 import type { Lang } from '../localize';
 import { localize } from '../localize';
-import { formatTemp } from '../utils';
+import { formatTemp, parseNumericState } from '../utils';
 
 export class NSPanelIndoor extends LitElement {
   static properties = {
@@ -16,10 +16,7 @@ export class NSPanelIndoor extends LitElement {
   lang: Lang = 'en';
 
   private _sensor(entityId: string): number | undefined {
-    if (!entityId) return undefined;
-    const state = this.hass?.states[entityId];
-    const parsed = state ? parseFloat(state.state) : NaN;
-    return Number.isNaN(parsed) ? undefined : parsed;
+    return parseNumericState(this.hass, entityId);
   }
 
   protected render() {

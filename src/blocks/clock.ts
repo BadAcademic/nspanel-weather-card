@@ -49,3 +49,7 @@ export class NSPanelClock extends LitElement {
     `;
   }
 }
+
+if (!customElements.get('nspanel-clock')) {
+  customElements.define('nspanel-clock', NSPanelClock);
+}

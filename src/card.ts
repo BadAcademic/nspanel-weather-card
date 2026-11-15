@@ -29,6 +29,7 @@ export class NSPanelWeatherCard extends LitElement {
   private _unsubForecast?: () => void;
   private _forecastKey = '';
   private _forecastRetryAt = 0;
+  private _forecastSource: 'none' | 'sub' | 'ws' | 'attr' = 'none';
   private _forecastTimer?: number;
 
   setConfig(config: Partial<NSPanelCardConfig>): void {
@@ -43,7 +44,7 @@ export class NSPanelWeatherCard extends LitElement {
 
   set hass(hass: HomeAssistant) {
     this._hass = hass;
-    if (!this._unsubForecast) this._forecastFromAttributes();
+    if (!this._unsubForecast && this._forecastSource !== 'ws') this._forecastFromAttributes();
     this._ensureForecast();
     this.requestUpdate();
   }
@@ -52,7 +53,7 @@ export class NSPanelWeatherCard extends LitElement {
     super.connectedCallback();
     if (!this._forecastTimer) {
       this._forecastTimer = window.setInterval(() => {
-        if (!this._unsubForecast) this._forecastFromAttributes();
+        if (!this._unsubForecast && this._forecastSource !== 'ws') this._forecastFromAttributes();
         this._forecastRetryAt = 0;
         this._ensureForecast();
         this.requestUpdate();
@@ -77,6 +78,7 @@ export class NSPanelWeatherCard extends LitElement {
     this._unsubForecast = undefined;
     this._forecastKey = '';
     this._forecastRetryAt = 0;
+    this._forecastSource = 'none';
   }
 
   private _ensureForecast(): void {
@@ -112,6 +114,7 @@ export class NSPanelWeatherCard extends LitElement {
       .subscribeMessage<{ forecast?: unknown }>(
         (message) => {
           this._forecast = buildForecast(message.forecast, c.days);
+          this._forecastSource = 'sub';
           this.requestUpdate();
         },
         { type: 'weather/subscribe_forecast', entity_id: entity, forecast_type: 'daily' },
@@ -122,6 +125,7 @@ export class NSPanelWeatherCard extends LitElement {
         };
         if (!this.isConnected || this._forecastKey !== key) {
           stop();
+          this._forecastRetryAt = 0;
           return;
         }
         this._unsubForecast = stop;
@@ -147,6 +151,7 @@ export class NSPanelWeatherCard extends LitElement {
       if (this._forecastKey !== key) return;
       const entries = result?.response?.[entity]?.forecast;
       this._forecast = buildForecast(entries, days);
+      this._forecastSource = 'ws';
     } catch {
       if (this._forecastKey !== key) return;
       this._forecastFromAttributes();
@@ -158,6 +163,7 @@ export class NSPanelWeatherCard extends LitElement {
     const entity = this._forecastEntity();
     const attributes = entity ? this._hass?.states[entity]?.attributes : undefined;
     this._forecast = buildForecast(attributes?.forecast, this._config.blocks.forecast.days);
+    this._forecastSource = 'attr';
   }
 
   getCardSize(): number {

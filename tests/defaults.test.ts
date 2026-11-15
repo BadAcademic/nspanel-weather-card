@@ -33,7 +33,7 @@ describe('mergeConfig', () => {
 
   it('keeps unknown keys harmless', () => {
     const c = mergeConfig({ foo: 'bar' } as never);
-    expect((c as Record<string, unknown>).foo).toBe('bar');
+    expect((c as unknown as Record<string, unknown>).foo).toBe('bar');
     expect(c.width).toBe(480);
   });
 

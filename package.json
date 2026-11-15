@@ -8,7 +8,8 @@
     "dev": "vite --config vite.dev.config.ts --open",
     "build": "vite build",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "lit": "^3.2.1"

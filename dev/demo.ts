@@ -1,5 +1,7 @@
 import '../src/main.ts';
 
+type FormValue = Record<string, unknown>;
+
 class HaIconStub extends HTMLElement {
   private _icon = '';
   set icon(value: string) {
@@ -65,3 +67,75 @@ const card = document.createElement('nspanel-weather-card') as HTMLElement & {
 card.setConfig({});
 card.hass = hass;
 document.getElementById('root')!.append(card);
+
+class HaFormStub extends HTMLElement {
+  private _data: FormValue = {};
+  private _schema: Array<{ name?: string; label?: string; selector?: Record<string, unknown> }> = [];
+  private _label?: (schema: unknown) => string;
+
+  set data(value: FormValue) {
+    this._data = value ?? {};
+    this._render();
+  }
+  get data(): FormValue {
+    return this._data;
+  }
+  set schema(value: typeof this._schema) {
+    this._schema = value ?? [];
+    this._render();
+  }
+  set computeLabel(fn: (schema: unknown) => string) {
+    this._label = fn;
+  }
+
+  private _render(): void {
+    this.innerHTML = '';
+    for (const field of this._schema) {
+      if (!field?.name) continue;
+      const label = document.createElement('label');
+      label.style.display = 'block';
+      label.style.marginBottom = '4px';
+      label.textContent = this._label?.(field) ?? field.name;
+      const selector = field.selector ?? {};
+      let input: HTMLInputElement;
+      if ('boolean' in selector) {
+        input = document.createElement('input');
+        input.type = 'checkbox';
+        input.checked = !!this._data[field.name];
+        input.onchange = () => this._emit(field.name!, input.checked);
+      } else if ('number' in selector) {
+        input = document.createElement('input');
+        input.type = 'number';
+        input.value = String(this._data[field.name] ?? '');
+        input.oninput = () => this._emit(field.name!, Number(input.value));
+      } else {
+        input = document.createElement('input');
+        const value = this._data[field.name];
+        input.value = Array.isArray(value) ? value.join(',') : String(value ?? '');
+        input.oninput = () => this._emit(field.name!, input.value);
+      }
+      label.appendChild(input);
+      this.appendChild(label);
+    }
+  }
+
+  private _emit(name: string, value: unknown): void {
+    const next = { ...this._data, [name]: value };
+    this.dispatchEvent(new CustomEvent('value-changed', { detail: { value: next }, bubbles: true, composed: true }));
+  }
+}
+
+if (!customElements.get('ha-form')) {
+  customElements.define('ha-form', HaFormStub);
+}
+
+const editor = document.createElement('nspanel-weather-card-editor') as HTMLElement & {
+  setConfig: (config: unknown) => void;
+  hass: unknown;
+};
+editor.setConfig({});
+editor.hass = hass;
+editor.addEventListener('config-changed', (ev) => {
+  card.setConfig((ev as CustomEvent<{ config: unknown }>).detail.config);
+});
+document.getElementById('editor-root')!.append(editor);
